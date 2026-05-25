@@ -195,9 +195,18 @@ html[data-theme="dark"] .toggle .knob{transform:translateX(24px)}
   opacity:0;transition:opacity .25s ease;display:flex;align-items:center;gap:4px;white-space:nowrap;
 }
 .field.tappable:hover .hint{opacity:1}
-.field .hint svg{width:13px;height:13px}
+.field .hint svg{width:13px;height:13px;flex:none}
 .field.copied .hint{opacity:1;color:var(--ok)}
-@media(hover:none){.field .hint{opacity:1}}
+/* touch devices: show only the copy icon top-right, hide the text label */
+@media(hover:none){
+  .field .hint{
+    opacity:1;position:absolute;top:14px;right:16px;gap:0;color:var(--ink-faint);
+  }
+  .field .hint svg{width:17px;height:17px}
+  .field .hint-txt{display:none}
+  .field.copied .hint{color:var(--ok)}
+  .field.tappable .meta{padding-right:30px}
+}
 
 .bank-logo{
   flex:none;width:34px;height:34px;border-radius:9px;overflow:hidden;
@@ -433,21 +442,31 @@ html[data-theme="dark"] .toggle .knob{transform:translateX(24px)}
   Array.prototype.forEach.call(document.querySelectorAll('.field.tappable'), function(field){
     field.setAttribute('role','button');
     field.setAttribute('tabindex','0');
+    var hint = field.querySelector('.hint');
+    // wrap the label text in its own span so we can toggle it without losing the icon
+    var icon = hint.querySelector('svg');
+    var txt = document.createElement('span');
+    txt.className = 'hint-txt';
+    txt.textContent = hint.textContent.trim() || 'Tocar para copiar';
+    hint.innerHTML = '';
+    if(icon) hint.appendChild(icon);
+    hint.appendChild(txt);
+
+    var resetTimer;
     function doCopy(){
       var val = field.getAttribute('data-copy');
       var name = field.getAttribute('data-name') || 'Dato';
       copyText(val).then(function(){
         field.classList.add('copied');
-        var hint = field.querySelector('.hint');
-        var prev = hint.textContent;
-        hint.textContent = 'Copiado ✓';
+        txt.textContent = 'Copiado';
         showToast(name + ' copiado');
-        setTimeout(function(){ field.classList.remove('copied'); hint.innerHTML = hint.dataset.orig; }, 1500);
+        clearTimeout(resetTimer);
+        resetTimer = setTimeout(function(){
+          field.classList.remove('copied');
+          txt.textContent = 'Tocar para copiar';
+        }, 1500);
       }).catch(function(){ showToast('No se pudo copiar'); });
     }
-    // preserve original hint markup
-    var h = field.querySelector('.hint');
-    h.dataset.orig = h.innerHTML;
     field.addEventListener('click', doCopy);
     field.addEventListener('keydown', function(e){
       if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); doCopy(); }
